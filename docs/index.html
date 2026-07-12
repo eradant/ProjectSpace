@@ -240,6 +240,38 @@
   .cmditem .ct{flex:1}
   .cmditem .ctype{font-size:10px;color:var(--txt-faint);text-transform:uppercase;letter-spacing:0.04em}
 
+  /* project view */
+  .pv-back{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--txt-dim);cursor:pointer;padding:6px 12px;border-radius:8px;border:1px solid var(--stroke);background:var(--glass);margin-bottom:16px;transition:all .18s}
+  .pv-back:hover{color:var(--txt);border-color:var(--stroke-bright)}
+  .pv-hero{margin-bottom:16px}
+  .pv-htitle{font-size:24px;font-weight:680;line-height:1.15}
+  .pv-hsub{font-size:12.5px;color:var(--txt-faint);margin-top:6px;display:flex;gap:8px;flex-wrap:wrap}
+  .pv-hsub .b{color:var(--txt-dim)}
+  .pgwrap{position:relative;height:380px;border:1px solid var(--stroke);border-radius:16px;overflow:hidden;margin-bottom:22px;background:radial-gradient(120% 100% at 50% 0%,rgba(255,255,255,0.03),transparent)}
+  #pgraph{width:100%;height:100%;display:block}
+  .pg-hint{position:absolute;top:12px;left:14px;font-size:10.5px;text-transform:uppercase;letter-spacing:0.06em;color:var(--txt-faint)}
+  .pgnode{cursor:pointer}
+  .pgnode text{font-size:9.5px;fill:var(--txt-dim);pointer-events:none}
+  .pgedge{stroke-width:1.2}
+  .pv-cols{display:grid;grid-template-columns:1.6fr 1fr;gap:22px;align-items:start}
+  @media(max-width:820px){.pv-cols{grid-template-columns:1fr}}
+  .pv-block h3{font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--txt-faint);font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .pv-block h3 .n{color:var(--txt-dim)}
+  .pv-block .notes{font-size:13.5px;line-height:1.6;color:var(--txt-dim);margin-bottom:22px}
+  .refgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
+  .refcard{border-radius:13px;overflow:hidden;border:1px solid var(--stroke);cursor:pointer;background:var(--glass);transition:transform .2s cubic-bezier(.2,.8,.2,1),border-color .2s,box-shadow .2s;opacity:0}
+  .refcard:hover{transform:translateY(-4px);border-color:var(--stroke-bright);box-shadow:var(--shadow)}
+  .refcard .rc-cover{position:relative;height:150px;display:flex;align-items:flex-end;padding:10px}
+  .refcard .rc-cover .sheen{position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(0,0,0,0.55))}
+  .refcard .rc-cover .icn{position:absolute;top:10px;right:10px;font-size:15px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.5))}
+  .refcard .rc-cover .medium{position:relative;font-size:9.5px;color:#fff;background:rgba(0,0,0,0.4);backdrop-filter:blur(4px);padding:3px 8px;border-radius:20px;border:1px solid rgba(255,255,255,0.15)}
+  .refcard .rc-body{padding:10px 11px}
+  .refcard .rc-t{font-size:12.5px;font-weight:550;line-height:1.3}
+  .refcard .rc-tags{font-size:10px;color:var(--txt-faint);margin-top:5px}
+  .addref{border-radius:13px;border:1px dashed var(--stroke);background:transparent;color:var(--txt-dim);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:210px;font-size:12px;font-family:inherit;transition:all .2s}
+  .addref:hover{color:var(--idea);border-color:var(--stroke-bright);background:var(--glass)}
+  .addref .plus{font-size:22px;line-height:1}
+  .pv-parts{background:var(--glass);border:1px solid var(--stroke);border-radius:14px;padding:14px}
   .fadein{opacity:0}
   .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(18,20,26,0.9);backdrop-filter:blur(16px);border:1px solid var(--stroke-bright);border-radius:11px;padding:11px 16px;font-size:12.5px;z-index:80;opacity:0;box-shadow:var(--shadow);display:flex;align-items:center;gap:9px}
 </style>
@@ -373,7 +405,7 @@ function updateRlabel(){
   const el=document.getElementById('rlabel'); if(!el)return;
   el.textContent = view==='graph' ? `${E.length} nodes · ${L.length} connections` : view==='inventory' ? 'sorted by location' : 'sorted by recency';
 }
-function setFilter(k){filter=k;renderFilters();if(view==='board')renderBoard(true);if(view==='inventory')renderInventory();if(view==='graph')filterGraph();}
+function setFilter(k){filter=k;if(view==='project'){setView('board');}renderFilters();if(view==='board')renderBoard(true);if(view==='inventory')renderInventory();if(view==='graph')filterGraph();}
 
 /* ---------- board ---------- */
 function coverHTML(e){
@@ -431,6 +463,7 @@ function renderInventory(){
 /* ---------- detail panel ---------- */
 function openDetail(id){
   const e=byId[id];
+  if(e.type==='project') return openProject(id);
   const panel=document.getElementById('panel');
   let extra='';
   if(e.type==='part'){
@@ -677,17 +710,201 @@ function removeProject(id){
   delete posCache[id];
   refreshCounts(); renderFilters(); updateRlabel();
   graphDirty=true;
-  const panel=document.getElementById('panel');
-  if(panel && panel.querySelector('.removeproj') && document.getElementById('scrim').classList.contains('open')) closePanel();
-  if(view==='graph') rebuildGraph();
-  if(view==='board') renderBoard(true);
-  if(view==='inventory') renderInventory();
+  if(document.getElementById('scrim').classList.contains('open')) closePanel();
+  if(view==='project'){ setView('board'); }
+  else if(view==='graph') rebuildGraph();
+  else if(view==='board') renderBoard(true);
+  else if(view==='inventory') renderInventory();
   toast('Removed “'+e.title+'”');
+}
+
+/* ---------- focused project view ---------- */
+let currentProject=null, pnodes=[], pedges=[], psvg, projRAF, pdrag=null;
+
+function billOfPartsHTML(e){
+  let have=0, tot=0, source=0;
+  const rows=(e.parts||[]).map(([pid,need])=>{
+    const p=byId[pid]; if(!p) return ''; tot++;
+    let cls,label;
+    if(p.qty>=need){cls='have';label='have it';have++;}
+    else if(p.qty>0){cls='short';label=`short ${+(need-p.qty).toFixed(2)}`;}
+    else {cls='none';label='not owned';source++;}
+    return `<div class="bop-row">
+      <span class="nm">${p.title}</span>
+      <span class="need">need ${need} ${p.unit} · have ${p.qty}</span>
+      <span class="bstat ${cls}">${cls==='have'?'✓':cls==='short'?'⚠':'✕'} ${label}</span>
+    </div>`;
+  }).join('');
+  return `<div class="bop-roll">
+      <div><div class="big">${tot}</div><div class="lbl">parts needed</div></div>
+      <div class="divider"></div>
+      <div><div class="big" style="color:var(--part)">${have}</div><div class="lbl">have it</div></div>
+      <div class="divider"></div>
+      <div><div class="big" style="color:#ff8a8a">${source}</div><div class="lbl">to source</div></div>
+    </div>${rows||'<div style="font-size:12px;color:var(--txt-faint)">No parts yet.</div>'}`;
+}
+
+function refCardHTML(o){
+  return `<div class="refcard" onclick="openDetail('${o.id}')">
+    <div class="rc-cover" style="background:${grad(hash(o.id))}">
+      <div class="sheen"></div>
+      <span class="icn">${o.icn}</span>
+      ${o.medium?`<span class="medium">${o.medium}</span>`:''}
+    </div>
+    <div class="rc-body">
+      <div class="rc-t">${o.title}</div>
+      <div class="rc-tags">${o.tags.map(t=>'#'+t).join(' ')}</div>
+    </div>
+  </div>`;
+}
+
+function openProject(id){
+  if(document.getElementById('scrim').classList.contains('open')) closePanel();
+  view='project'; currentProject=id;
+  document.querySelectorAll('.vbtn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('graph').style.display='none';
+  document.getElementById('glegend').style.display='none';
+  document.getElementById('gprojects').style.display='none';
+  document.getElementById('ghint').style.display='none';
+  document.getElementById('filters').style.display='none';
+  cancelAnimationFrame(graphRAF); cancelAnimationFrame(projRAF);
+  const scroll=document.getElementById('scroll'); scroll.style.display='block';
+  renderProject(id);
+}
+function renderProject(id){
+  const e=byId[id];
+  const refs=linksFor(id).map(c=>byId[c.other]).filter(o=>o&&o.type==='idea');
+  const scroll=document.getElementById('scroll');
+  scroll.innerHTML=`
+    <div class="pv-back" onclick="setView('board')">← All ideas</div>
+    <div class="pv-hero">
+      <div class="pv-htitle">${e.icn} ${e.title}</div>
+      <div class="pv-hsub"><span class="b">phase: ${e.phase||e.status}</span> · ${refs.length} photo references · ${(e.parts||[]).length} parts</div>
+    </div>
+    <div class="pgwrap"><div class="pg-hint">This project &amp; its connections</div><svg id="pgraph"></svg></div>
+    ${e.notes?`<div class="pv-block" style="margin-bottom:20px"><h3>About</h3><div class="notes">${e.notes}</div></div>`:''}
+    <div class="pv-cols">
+      <div class="pv-block">
+        <h3>Photo references <span class="n">· ${refs.length}</span></h3>
+        <div class="refgrid">
+          ${refs.map(refCardHTML).join('')}
+          <button class="addref" onclick="promptAddReference('${id}')"><span class="plus">＋</span>Add photo / link</button>
+        </div>
+      </div>
+      <div class="pv-block">
+        <h3>Bill of parts</h3>
+        <div class="pv-parts">${billOfPartsHTML(e)}</div>
+        <button class="removeproj" onclick="removeProject('${id}')">Remove this project</button>
+      </div>
+    </div>`;
+  updateRlabel();
+  initProjGraph(id);
+  anime({targets:'.pv-back,.pv-hero,.pgwrap',opacity:[0,1],translateY:[10,0],delay:anime.stagger(60),duration:500,easing:'easeOutQuad'});
+  anime({targets:'.refcard',opacity:[0,1],translateY:[14,0],scale:[0.98,1],delay:anime.stagger(45,{start:250}),duration:480,easing:'cubicBezier(.2,.8,.2,1)'});
+  anime({targets:'.pv-parts,.pv-block h3',opacity:[0,1],duration:600,easing:'easeOutQuad'});
+}
+function promptAddReference(pid){
+  const t=(window.prompt('Reference title (a link or photo name):','')||'').trim();
+  if(t) addReference(pid,t);
+}
+function addReference(pid,title){
+  const nid='r'+Date.now();
+  const e={id:nid,type:'idea',title,icn:'🖼️',medium:'image',tags:['reference'],spark:'',
+    notes:'Saved reference for this project.',status:'spark',h:150};
+  E.push(e); byId[nid]=e; L.push({a:nid,b:pid,kind:'inspires'});
+  refreshCounts(); graphDirty=true;
+  renderProject(pid); toast('Added reference “'+title+'”');
+}
+
+/* single-project focused graph */
+function projSubgraph(id){
+  const ids=[id, ...linksFor(id).map(c=>c.other)];
+  const set=new Set(ids);
+  const nodes=ids.map(x=>byId[x]).filter(Boolean);
+  const edges=L.filter(l=>set.has(l.a)&&set.has(l.b));
+  return {nodes,edges};
+}
+function initProjGraph(id){
+  psvg=document.getElementById('pgraph'); if(!psvg)return;
+  const W=psvg.clientWidth||640, H=psvg.clientHeight||380, cx=W/2, cy=H/2;
+  const {nodes,edges}=projSubgraph(id);
+  const idx=Object.fromEntries(nodes.map((n,i)=>[n.id,i]));
+  pnodes=nodes.map(n=>({e:n,x:cx,y:cy,vx:0,vy:0,pin:n.id===id}));
+  const ideas=nodes.filter(n=>n.type==='idea'), parts=nodes.filter(n=>n.type==='part'),
+        other=nodes.filter(n=>n.id!==id&&n.type!=='idea'&&n.type!=='part');
+  const seed=(arr,a0,a1,r)=>arr.forEach((n,i)=>{const t=arr.length===1?(a0+a1)/2:a0+(a1-a0)*i/(arr.length-1);const k=idx[n.id];pnodes[k].x=cx+Math.cos(t)*r;pnodes[k].y=cy+Math.sin(t)*r;});
+  seed(ideas,-Math.PI*0.88,-Math.PI*0.12,145);   // ideas arc over the top
+  seed(parts, Math.PI*0.12, Math.PI*0.88,145);    // parts arc along the bottom
+  seed(other, Math.PI*0.92, Math.PI*1.08,155);
+  pedges=edges.map(l=>({s:idx[l.a],t:idx[l.b],kind:l.kind})).filter(g=>g.s!=null&&g.t!=null);
+  buildProjDOM(id);
+  runProjForce(cx,cy);
+}
+function buildProjDOM(id){
+  let e=`<g>`+pedges.map((g,i)=>`<line class="pgedge" id="pe${i}" stroke="${KINDCOLOR[g.kind]}" stroke-opacity="0.5"/>`).join('')+`</g>`;
+  let n=`<g>`+pnodes.map((nd,i)=>{
+    const c=COLORS[nd.e.type], r=nd.pin?15:9;
+    return `<g class="pgnode" id="pn${i}" data-i="${i}">
+      <circle r="${r}" fill="${hexa(c,0.92)}" stroke="${hexa(c,0.32)}" stroke-width="${nd.pin?7:5}"/>
+      ${nd.pin?`<text text-anchor="middle" y="4" style="font-size:11px;fill:#0a0b0e;font-weight:700">${nd.e.icn}</text>`:''}
+      <text text-anchor="middle" y="${r+12}">${nd.e.title.length>16?nd.e.title.slice(0,15)+'…':nd.e.title}</text>
+    </g>`;
+  }).join('')+`</g>`;
+  psvg.innerHTML=e+n;
+  pnodes.forEach((nd,i)=>{
+    const el=document.getElementById('pn'+i);
+    el.addEventListener('mousedown',ev=>{if(!nd.pin){pdrag=i;}ev.stopPropagation();});
+    el.addEventListener('click',ev=>{ev.stopPropagation(); if(!nd.pin) openDetail(nd.e.id);});
+  });
+  psvg.addEventListener('mousemove',ev=>{
+    if(pdrag==null)return; const r=psvg.getBoundingClientRect();
+    pnodes[pdrag].x=ev.clientX-r.left; pnodes[pdrag].y=ev.clientY-r.top; pnodes[pdrag].vx=0; pnodes[pdrag].vy=0;
+  });
+  window.addEventListener('mouseup',()=>pdrag=null);
+}
+function runProjForce(cx,cy){
+  const W=psvg.clientWidth, H=psvg.clientHeight;
+  function step(){
+    const REP=5200, DAMP=0.82, RING=138, KRING=0.05, KEDGE=0.02;
+    for(let i=0;i<pnodes.length;i++){
+      const a=pnodes[i]; if(a.pin)continue;
+      // radial spring to hold neighbors on a ring around the hub
+      let dx=a.x-cx, dy=a.y-cy, d=Math.sqrt(dx*dx+dy*dy)+0.01;
+      const fr=(d-RING)*KRING; a.vx-=dx/d*fr; a.vy-=dy/d*fr;
+      // repel other neighbors to spread angularly
+      for(let j=0;j<pnodes.length;j++){
+        if(i===j||pnodes[j].pin)continue; const b=pnodes[j];
+        let ex=a.x-b.x, ey=a.y-b.y, e2=ex*ex+ey*ey+0.01, ed=Math.sqrt(e2);
+        const f=REP/e2; a.vx+=ex/ed*f*0.016; a.vy+=ey/ed*f*0.016;
+      }
+    }
+    // neighbor-to-neighbor edges pull related refs together
+    pedges.forEach(g=>{
+      const a=pnodes[g.s], b=pnodes[g.t]; if(a.pin||b.pin)return;
+      let dx=b.x-a.x, dy=b.y-a.y, d=Math.sqrt(dx*dx+dy*dy)+0.01, f=(d-RING*0.8)*KEDGE;
+      a.vx+=dx/d*f; a.vy+=dy/d*f; b.vx-=dx/d*f; b.vy-=dy/d*f;
+    });
+    pnodes.forEach((n,i)=>{
+      if(n.pin||i===pdrag){const el=document.getElementById('pn'+i); if(el)el.setAttribute('transform',`translate(${n.x.toFixed(1)},${n.y.toFixed(1)})`); return;}
+      n.vx*=DAMP; n.vy*=DAMP; n.x+=n.vx; n.y+=n.vy;
+      n.x=Math.max(34,Math.min(W-34,n.x)); n.y=Math.max(30,Math.min(H-34,n.y));
+      const el=document.getElementById('pn'+i); if(el)el.setAttribute('transform',`translate(${n.x.toFixed(1)},${n.y.toFixed(1)})`);
+    });
+    pedges.forEach((g,i)=>{
+      const a=pnodes[g.s], b=pnodes[g.t], el=document.getElementById('pe'+i); if(!el)return;
+      el.setAttribute('x1',a.x);el.setAttribute('y1',a.y);el.setAttribute('x2',b.x);el.setAttribute('y2',b.y);
+    });
+    if(view==='project') projRAF=requestAnimationFrame(step);
+  }
+  step();
 }
 
 /* ---------- view switching ---------- */
 function setView(v){
   view=v;
+  currentProject=null;
+  cancelAnimationFrame(projRAF);
+  document.getElementById('filters').style.display='flex';
   document.querySelectorAll('.vbtn').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
   const scroll=document.getElementById('scroll'), graph=document.getElementById('graph');
   const showGraph = v==='graph';
