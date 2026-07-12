@@ -272,6 +272,46 @@
   .addref:hover{color:var(--idea);border-color:var(--stroke-bright);background:var(--glass)}
   .addref .plus{font-size:22px;line-height:1}
   .pv-parts{background:var(--glass);border:1px solid var(--stroke);border-radius:14px;padding:14px}
+  /* paste / link-preview modal */
+  .pastecard{width:min(520px,92vw)}
+  .paste-top input{width:100%;background:transparent;border:0;outline:0;color:var(--txt);font-size:14px;padding:16px 18px;border-bottom:1px solid var(--stroke);font-family:inherit}
+  .paste-top input::placeholder{color:var(--txt-faint)}
+  .paste-preview{padding:14px;min-height:150px;display:flex;align-items:center;justify-content:center}
+  .pp-empty{font-size:12.5px;color:var(--txt-faint)}
+  .pp-card{width:100%;display:flex;gap:14px;background:var(--glass);border:1px solid var(--stroke);border-radius:12px;overflow:hidden;opacity:0}
+  .pp-card .pp-img{width:150px;flex-shrink:0;background-size:cover;background-position:center;background-color:#15171d;min-height:110px}
+  .pp-card .pp-meta{padding:12px 12px 12px 0;min-width:0;display:flex;flex-direction:column;gap:5px;justify-content:center}
+  .pp-card .pp-t{font-size:13.5px;font-weight:580;line-height:1.3}
+  .pp-card .pp-d{font-size:11.5px;color:var(--txt-dim);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .pp-card .pp-dom{font-size:10.5px;color:var(--txt-faint);display:flex;align-items:center;gap:6px}
+  .pp-card .pp-dom img{width:14px;height:14px;border-radius:3px}
+  .pp-loading{display:flex;gap:14px;width:100%}
+  .pp-loading .sk{border-radius:8px;background:linear-gradient(100deg,rgba(255,255,255,0.04) 30%,rgba(255,255,255,0.09) 50%,rgba(255,255,255,0.04) 70%);background-size:200% 100%;animation:shimmer 1.2s infinite}
+  .pp-loading .sk.img{width:150px;height:110px}
+  .pp-loading .sk.l1{height:14px;width:70%;margin-bottom:8px}
+  .pp-loading .sk.l2{height:11px;width:90%}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  .paste-actions{display:flex;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid var(--stroke)}
+  .pp-hint{font-size:11px;color:var(--txt-faint);margin-right:auto}
+  .pp-cancel{font-size:12px;color:var(--txt-dim);background:transparent;border:1px solid var(--stroke);border-radius:8px;padding:8px 14px;cursor:pointer;font-family:inherit}
+  .pp-cancel:hover{color:var(--txt);border-color:var(--stroke-bright)}
+  .pp-save{font-size:12px;font-weight:600;color:#0a0b0e;background:linear-gradient(135deg,var(--idea),var(--part));border:0;border-radius:8px;padding:8px 16px;cursor:pointer;font-family:inherit;transition:opacity .2s,transform .15s}
+  .pp-save:disabled{opacity:0.4;cursor:default}
+  .pp-save:not(:disabled):hover{transform:translateY(-1px)}
+
+  /* originkit-inspired motion */
+  .card,.refcard{transform-style:preserve-3d}
+  .spotlight{position:fixed;width:520px;height:520px;border-radius:50%;pointer-events:none;z-index:2;
+    background:radial-gradient(circle,rgba(139,124,255,0.10),rgba(79,209,197,0.05) 40%,transparent 65%);
+    transform:translate(-50%,-50%);opacity:0;transition:opacity .35s;mix-blend-mode:screen}
+  @keyframes blurIn{from{opacity:0;filter:blur(14px);transform:translateY(10px)}to{opacity:1;filter:blur(0);transform:translateY(0)}}
+  .blurin{animation:blurIn .7s cubic-bezier(.2,.8,.2,1) both}
+  .typechip{position:relative;overflow:hidden}
+  .typechip::after{content:'';position:absolute;top:0;left:-120%;width:60%;height:100%;
+    background:linear-gradient(100deg,transparent,rgba(255,255,255,0.35),transparent);transform:skewX(-20deg)}
+  .card:hover .typechip::after{animation:shine .9s ease}
+  @keyframes shine{to{left:160%}}
+
   .fadein{opacity:0}
   .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(18,20,26,0.9);backdrop-filter:blur(16px);border:1px solid var(--stroke-bright);border-radius:11px;padding:11px 16px;font-size:12.5px;z-index:80;opacity:0;box-shadow:var(--shadow);display:flex;align-items:center;gap:9px}
 </style>
@@ -281,6 +321,7 @@
   <div class="blob a"></div><div class="blob b"></div><div class="blob c"></div>
   <div class="grain"></div>
 </div>
+<div class="spotlight" id="spotlight"></div>
 
 <div class="app">
   <div class="topbar">
@@ -324,6 +365,23 @@
   </div>
 </div>
 
+<!-- paste / link preview modal -->
+<div class="cmdscrim" id="pastescrim" onclick="if(event.target===this)closePaste()">
+  <div class="cmd pastecard" id="pastecard">
+    <div class="paste-top">
+      <input id="pasteinput" placeholder="Paste a link — Instagram, YouTube, an article, an image…" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="paste-preview" id="pastepreview">
+      <div class="pp-empty">A photo preview will appear here as you paste.</div>
+    </div>
+    <div class="paste-actions">
+      <span class="pp-hint" id="pphint"></span>
+      <button class="pp-cancel" onclick="closePaste()">Cancel</button>
+      <button class="pp-save" id="ppsave" onclick="confirmPaste()" disabled>Save to board</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -357,6 +415,15 @@ const E = [
     parts:[['p4',1],['p3',4]]},
 ];
 const byId = Object.fromEntries(E.map(e=>[e.id,e]));
+// seed real photo covers (picsum is CORS-friendly for <img>); paste flow adds real unfurled images
+const SEED_IMG={
+  i1:'lamp-brass', i2:'wood-grain', i3:'terrazzo-stone', i4:'led-glow', i5:'pegboard-wall',
+  i6:'cable-desk', i7:'concrete-plant', p4:'walnut-board', p5:'plywood-sheet',
+  j1:'floating-shelf', j2:'desk-plant'
+};
+Object.entries(SEED_IMG).forEach(([id,seed])=>{ if(byId[id]) byId[id].img=`https://picsum.photos/seed/ideaboard-${seed}/640/440`; });
+function bg(e){ return e&&e.img ? `background-image:url('${e.img}');background-size:cover;background-position:center` : `background:${grad(hash(e?e.id:'x'))}`; }
+function bgById(id){ return bg(byId[id]); }
 
 // links: {a,b,kind}
 const L = [
@@ -382,6 +449,17 @@ const KINDCOLOR = {'relates-to':'#6b7280','inspires':'#8b7cff','references':'#4f
 
 function linksFor(id){return L.filter(l=>l.a===id||l.b===id).map(l=>({other:l.a===id?l.b:l.a,kind:l.kind}));}
 function linkCount(id){return L.filter(l=>l.a===id||l.b===id).length;}
+// circular graph node: photo fill (clipped) with a type-colored ring, or solid color when no image
+function nodeVisual(prefix,i,ent,c,r){
+  const cid=prefix+'clip'+i;
+  if(ent.img){
+    return `<defs><clipPath id="${cid}"><circle r="${r}"/></clipPath></defs>
+      <circle r="${r+2.5}" fill="${hexa(c,0.9)}"/>
+      <image href="${ent.img}" x="${-r}" y="${-r}" width="${2*r}" height="${2*r}" clip-path="url(#${cid})" preserveAspectRatio="xMidYMid slice"/>
+      <circle r="${r}" fill="none" stroke="${hexa(c,0.95)}" stroke-width="2.5"/>`;
+  }
+  return `<circle r="${r}" fill="${hexa(c,0.9)}" stroke="${hexa(c,0.32)}" stroke-width="${Math.max(5,r*0.5)}"/>`;
+}
 
 /* ---------- state ---------- */
 let filter='all';
@@ -409,7 +487,7 @@ function setFilter(k){filter=k;if(view==='project'){setView('board');}renderFilt
 
 /* ---------- board ---------- */
 function coverHTML(e){
-  return `<div class="cover" style="background:${grad(hash(e.id))};height:${Math.round(e.h*0.62)}px">
+  return `<div class="cover" style="${bg(e)};height:${Math.round(e.h*0.62)}px">
     <div class="sheen"></div>
     <span class="icn">${e.icn}</span>
     ${e.medium?`<span class="medium">${e.medium}</span>`:''}
@@ -442,7 +520,7 @@ function renderInventory(){
   const total=parts.length, allocated=parts.filter(p=>p.status==='alloc').length, low=parts.filter(p=>p.status==='low').length;
   const rows=parts.map(p=>`
     <tr onclick="openDetail('${p.id}')">
-      <td><span class="swatch" style="background:${grad(hash(p.id))}"></span>${p.title}</td>
+      <td><span class="swatch" style="${bg(p)}"></span>${p.title}</td>
       <td><span class="qty">${p.qty}</span> <span style="color:var(--txt-faint);font-size:11px">${p.unit}</span></td>
       <td><span class="loc">${p.loc}</span></td>
       <td style="color:var(--txt-dim);font-size:11.5px">${Object.entries(p.specs)[0].join(': ')}</td>
@@ -480,14 +558,14 @@ function openDetail(id){
   const connHTML = conns.length? conns.map(c=>{
     const o=byId[c.other];
     return `<div class="conn" onclick="openDetail('${o.id}')">
-      <span class="mini" style="background:${grad(hash(o.id))}"></span>
+      <span class="mini" style="${bg(o)}"></span>
       <div class="cinfo"><div class="cn">${o.title}</div><div class="ck">${o.type}</div></div>
       <span class="kindtag" style="color:${KINDCOLOR[c.kind]};border-color:${hexa(KINDCOLOR[c.kind],0.4)}">${c.kind}</span>
     </div>`;
   }).join('') : `<div style="font-size:12px;color:var(--txt-faint);padding:4px 0">No connections yet.</div>`;
 
   panel.innerHTML=`
-    <div class="phero" style="background:${grad(hash(e.id))}">
+    <div class="phero" style="${bg(e)}">
       <div class="sheen"></div>
       <button class="pclose" onclick="closePanel()">✕</button>
       <span class="htype" style="background:${hexa(COLORS[e.type],0.25)};color:#fff">${e.icn} ${e.type}</span>
@@ -524,7 +602,7 @@ function projectSections(e){
   }).join('');
   const insp=linksFor(e.id).map(c=>byId[c.other]).filter(o=>o.type==='idea');
   const inspHTML=insp.length?`<div class="section"><h4>Inspiration · ${insp.length}</h4><div class="insp-grid">${insp.map(o=>`
-    <div class="insp" onclick="openDetail('${o.id}')"><div class="ic" style="background:${grad(hash(o.id))}"><span style="font-size:14px">${o.icn}</span></div><div class="il">${o.title}</div></div>`).join('')}</div></div>`:'';
+    <div class="insp" onclick="openDetail('${o.id}')"><div class="ic" style="${bg(o)}"><span style="font-size:14px">${o.icn}</span></div><div class="il">${o.title}</div></div>`).join('')}</div></div>`:'';
   return `${inspHTML}
     <div class="section">
       <h4>Bill of parts</h4>
@@ -586,7 +664,7 @@ function buildGraphDOM(){
   let n=`<g id="gnodes">`+gnodes.map((nd,i)=>{
     const c=COLORS[nd.e.type], r=8+linkCount(nd.e.id)*1.6;
     return `<g class="gnode" id="gn${i}" data-i="${i}">
-      <circle r="${r}" fill="${hexa(c,0.9)}" stroke="${hexa(c,0.3)}" stroke-width="6"/>
+      ${nodeVisual('g',i,nd.e,c,r)}
       <text text-anchor="middle" y="${r+12}">${nd.e.title.length>18?nd.e.title.slice(0,17)+'…':nd.e.title}</text>
     </g>`;
   }).join('')+`</g>`;
@@ -746,7 +824,7 @@ function billOfPartsHTML(e){
 
 function refCardHTML(o){
   return `<div class="refcard" onclick="openDetail('${o.id}')">
-    <div class="rc-cover" style="background:${grad(hash(o.id))}">
+    <div class="rc-cover" style="${bg(o)}">
       <div class="sheen"></div>
       <span class="icn">${o.icn}</span>
       ${o.medium?`<span class="medium">${o.medium}</span>`:''}
@@ -778,7 +856,7 @@ function renderProject(id){
   scroll.innerHTML=`
     <div class="pv-back" onclick="setView('board')">← All ideas</div>
     <div class="pv-hero">
-      <div class="pv-htitle">${e.icn} ${e.title}</div>
+      <div class="pv-htitle blurin">${e.icn} ${e.title}</div>
       <div class="pv-hsub"><span class="b">phase: ${e.phase||e.status}</span> · ${refs.length} photo references · ${(e.parts||[]).length} parts</div>
     </div>
     <div class="pgwrap"><div class="pg-hint">This project &amp; its connections</div><svg id="pgraph"></svg></div>
@@ -803,18 +881,7 @@ function renderProject(id){
   anime({targets:'.refcard',opacity:[0,1],translateY:[14,0],scale:[0.98,1],delay:anime.stagger(45,{start:250}),duration:480,easing:'cubicBezier(.2,.8,.2,1)'});
   anime({targets:'.pv-parts,.pv-block h3',opacity:[0,1],duration:600,easing:'easeOutQuad'});
 }
-function promptAddReference(pid){
-  const t=(window.prompt('Reference title (a link or photo name):','')||'').trim();
-  if(t) addReference(pid,t);
-}
-function addReference(pid,title){
-  const nid='r'+Date.now();
-  const e={id:nid,type:'idea',title,icn:'🖼️',medium:'image',tags:['reference'],spark:'',
-    notes:'Saved reference for this project.',status:'spark',h:150};
-  E.push(e); byId[nid]=e; L.push({a:nid,b:pid,kind:'inspires'});
-  refreshCounts(); graphDirty=true;
-  renderProject(pid); toast('Added reference “'+title+'”');
-}
+function promptAddReference(pid){ openPaste('reference', pid); }
 
 /* single-project focused graph */
 function projSubgraph(id){
@@ -843,11 +910,12 @@ function initProjGraph(id){
 function buildProjDOM(id){
   let e=`<g>`+pedges.map((g,i)=>`<line class="pgedge" id="pe${i}" stroke="${KINDCOLOR[g.kind]}" stroke-opacity="0.5"/>`).join('')+`</g>`;
   let n=`<g>`+pnodes.map((nd,i)=>{
-    const c=COLORS[nd.e.type], r=nd.pin?15:9;
+    const c=COLORS[nd.e.type], r=nd.pin?16:10;
+    const showIcon = nd.pin && !nd.e.img;
     return `<g class="pgnode" id="pn${i}" data-i="${i}">
-      <circle r="${r}" fill="${hexa(c,0.92)}" stroke="${hexa(c,0.32)}" stroke-width="${nd.pin?7:5}"/>
-      ${nd.pin?`<text text-anchor="middle" y="4" style="font-size:11px;fill:#0a0b0e;font-weight:700">${nd.e.icn}</text>`:''}
-      <text text-anchor="middle" y="${r+12}">${nd.e.title.length>16?nd.e.title.slice(0,15)+'…':nd.e.title}</text>
+      ${nodeVisual('p',i,nd.e,c,r)}
+      ${showIcon?`<text text-anchor="middle" y="4" style="font-size:11px;fill:#0a0b0e;font-weight:700">${nd.e.icn}</text>`:''}
+      <text text-anchor="middle" y="${r+13}">${nd.e.title.length>16?nd.e.title.slice(0,15)+'…':nd.e.title}</text>
     </g>`;
   }).join('')+`</g>`;
   psvg.innerHTML=e+n;
@@ -934,7 +1002,7 @@ function renderCmd(q){
   cmdSel=0;
   document.getElementById('cmdlist').innerHTML = cmdResults.map((e,i)=>`
     <div class="cmditem ${i===0?'sel':''}" data-id="${e.id}" onclick="pickCmd('${e.id}')">
-      <span class="cmini" style="background:${grad(hash(e.id))}"></span>
+      <span class="cmini" style="${bg(e)}"></span>
       <div class="ct">${e.title}</div>
       <span class="ctype">${e.type}</span>
     </div>`).join('') || `<div style="padding:14px;color:var(--txt-faint);font-size:12px">No matches</div>`;
@@ -958,7 +1026,101 @@ function toast(msg){
   anime({targets:t,opacity:[0,1],translateY:[20,0],duration:300,easing:'easeOutQuad'});
   setTimeout(()=>anime({targets:t,opacity:0,translateY:20,duration:300,easing:'easeInQuad'}),2200);
 }
-function fakeAdd(){toast('Pasted link → unfurled title + cover → dropped in your inbox');}
+/* ---------- paste + real link preview ---------- */
+let pasteCtx=null, pastePreview=null, pasteSeq=0;
+function openPaste(mode, pid){
+  pasteCtx={mode, pid}; pastePreview=null;
+  document.getElementById('pastescrim').classList.add('open');
+  const inp=document.getElementById('pasteinput'); inp.value=''; inp.focus();
+  document.getElementById('pastepreview').innerHTML='<div class="pp-empty">A photo preview will appear here as you paste.</div>';
+  document.getElementById('pphint').textContent='';
+  const save=document.getElementById('ppsave'); save.disabled=true;
+  save.textContent = mode==='reference' ? 'Add to project' : 'Save to board';
+  anime({targets:'#pastecard',opacity:[0,1],scale:[0.96,1],translateY:[-8,0],duration:300,easing:'cubicBezier(.2,.85,.25,1)'});
+}
+function closePaste(){document.getElementById('pastescrim').classList.remove('open');}
+function domainOf(u){try{return new URL(u).hostname.replace(/^www\./,'');}catch(e){return '';}}
+function ytId(u){const m=u.match(/(?:youtu\.be\/|v=|shorts\/|embed\/)([\w-]{6,})/);return m?m[1]:null;}
+
+// resolve a URL to {title, image, description, domain, medium}
+async function unfurl(url){
+  const dom=domainOf(url);
+  const yt=ytId(url);
+  if(yt) return {title:'YouTube video', image:`https://i.ytimg.com/vi/${yt}/hqdefault.jpg`, description:url, domain:'youtube.com', medium:'video'};
+  if(/\.(jpe?g|png|gif|webp|avif)(\?|$)/i.test(url)) return {title:dom||'Image', image:url, description:url, domain:dom, medium:'image'};
+  // try microlink for a real OG image (CORS-enabled); fall back gracefully
+  try{
+    const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),6000);
+    const r=await fetch('https://api.microlink.io/?url='+encodeURIComponent(url), {signal:ctrl.signal});
+    clearTimeout(to);
+    const j=await r.json();
+    if(j&&j.status==='success'){
+      const d=j.data;
+      const img=(d.image&&d.image.url)||(d.logo&&d.logo.url)||null;
+      const med = d.video?'video' : (/instagram/.test(dom)?'reel' : d.image?'image':'link');
+      return {title:d.title||dom, image:img, description:d.description||url, domain:dom, medium:med,
+        favicon:(d.logo&&d.logo.url)||`https://www.google.com/s2/favicons?domain=${dom}&sz=64`};
+    }
+  }catch(e){/* offline or blocked -> fallback */}
+  // fallback: favicon + gradient
+  return {title:dom||url, image:null, description:url, domain:dom, medium:'link',
+    favicon:`https://www.google.com/s2/favicons?domain=${dom}&sz=64`};
+}
+
+function renderPastePreview(data){
+  const box=document.getElementById('pastepreview');
+  const imgStyle = data.image ? `background-image:url('${data.image}')` : `background:${grad(hash(data.domain||data.title))}`;
+  box.innerHTML=`<div class="pp-card" id="ppcard">
+    <div class="pp-img" style="${imgStyle}"></div>
+    <div class="pp-meta">
+      <div class="pp-t">${data.title||'Untitled'}</div>
+      <div class="pp-d">${data.description||''}</div>
+      <div class="pp-dom">${data.favicon?`<img src="${data.favicon}" onerror="this.style.display='none'">`:''}${data.domain||''} · <span style="color:var(--idea)">${data.medium}</span></div>
+    </div>
+  </div>`;
+  anime({targets:'#ppcard',opacity:[0,1],translateY:[8,0],duration:400,easing:'easeOutQuad'});
+}
+function showPasteLoading(){
+  document.getElementById('pastepreview').innerHTML=
+    `<div class="pp-loading"><div class="sk img"></div><div style="flex:1"><div class="sk l1"></div><div class="sk l2"></div></div></div>`;
+}
+async function handlePaste(url){
+  url=url.trim(); if(!url) return;
+  if(!/^https?:\/\//i.test(url)) url='https://'+url;
+  const seq=++pasteSeq;
+  showPasteLoading();
+  document.getElementById('pphint').textContent='fetching preview…';
+  const data=await unfurl(url);
+  if(seq!==pasteSeq) return; // superseded by newer paste
+  data.url=url; pastePreview=data;
+  renderPastePreview(data);
+  document.getElementById('pphint').textContent = data.image ? 'preview loaded' : 'no image found — using site icon';
+  document.getElementById('ppsave').disabled=false;
+}
+function confirmPaste(){
+  if(!pastePreview) return;
+  const d=pastePreview;
+  const id=(pasteCtx.mode==='reference'?'r':'i')+Date.now();
+  const e={id, type:'idea', title:d.title||d.domain||'Saved link', icn:{video:'🎬',image:'🖼️',reel:'📸',link:'🔗'}[d.medium]||'🔗',
+    medium:d.medium, tags:pasteCtx.mode==='reference'?['reference']:['inbox'], spark:'', source_url:d.url,
+    notes:d.description||d.url, status:'spark', h:150, img:d.image||null};
+  E.push(e); byId[id]=e;
+  if(pasteCtx.mode==='reference' && pasteCtx.pid){ L.push({a:id,b:pasteCtx.pid,kind:'inspires'}); }
+  refreshCounts(); renderFilters(); graphDirty=true;
+  closePaste();
+  if(view==='project' && pasteCtx.pid){ renderProject(pasteCtx.pid); }
+  else { setFilter('all'); if(view!=='board')setView('board'); else renderBoard(true); }
+  toast(d.image?'Saved with photo preview':'Saved “'+e.title+'”');
+}
+// input listeners
+(function(){
+  const inp=document.getElementById('pasteinput');
+  let t;
+  inp.addEventListener('input',e=>{clearTimeout(t);const v=e.target.value;t=setTimeout(()=>handlePaste(v),400);});
+  inp.addEventListener('paste',e=>{setTimeout(()=>handlePaste(inp.value),30);});
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter'){clearTimeout(t);handlePaste(inp.value);}});
+})();
+function fakeAdd(){openPaste('board');}
 
 /* utils */
 function hash(s){let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return h%97+3;}
@@ -967,8 +1129,33 @@ function hexa(hex,a){const n=parseInt(hex.slice(1),16);return `rgba(${(n>>16)&25
 /* keyboard */
 document.addEventListener('keydown',e=>{
   if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openCmd();}
-  if(e.key==='Escape'){closeCmd();closePanel();}
+  if(e.key==='Escape'){closeCmd();closePanel();closePaste();}
 });
+
+/* ---------- originkit-inspired micro-interactions ---------- */
+// cursor spotlight over the board/project stage
+(function(){
+  const spot=document.getElementById('spotlight'); const stage=document.querySelector('.stage');
+  stage.addEventListener('mousemove',e=>{spot.style.opacity=1;spot.style.left=e.clientX+'px';spot.style.top=e.clientY+'px';});
+  stage.addEventListener('mouseleave',()=>spot.style.opacity=0);
+})();
+// direction/weight hover tilt on cards (event-delegated so it covers re-rendered cards)
+document.addEventListener('mousemove',e=>{
+  const c=e.target.closest && e.target.closest('.card,.refcard'); if(!c)return;
+  const r=c.getBoundingClientRect();
+  const px=(e.clientX-r.left)/r.width-0.5, py=(e.clientY-r.top)/r.height-0.5;
+  c.style.transform=`perspective(700px) rotateX(${(-py*7).toFixed(2)}deg) rotateY(${(px*9).toFixed(2)}deg) translateY(-4px)`;
+});
+document.addEventListener('mouseout',e=>{
+  const c=e.target.closest && e.target.closest('.card,.refcard'); if(!c)return;
+  if(!c.contains(e.relatedTarget)) c.style.transform='';
+});
+// magnetic primary button
+(function(){
+  const b=document.querySelector('.addbtn'); if(!b)return;
+  b.addEventListener('mousemove',e=>{const r=b.getBoundingClientRect();const x=e.clientX-r.left-r.width/2,y=e.clientY-r.top-r.height/2;b.style.transform=`translate(${x*0.3}px,${y*0.4}px)`;});
+  b.addEventListener('mouseleave',()=>b.style.transform='');
+})();
 document.querySelectorAll('.vbtn').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
 
 /* boot */
